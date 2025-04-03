@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Environment variables
+.env
+
+# Virtual environment
+venv/
+.env/
+
+# Logs
+*.log
+
+# Results
+resultados_engnav.txt
+
+# OS-specific files
+.DS_Store
+Thumbs.db

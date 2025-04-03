@@ -26,10 +26,9 @@ def verificar_concurso(id_concurso):
     try:
         driver.get(url)
         time.sleep(1)  # pequeno delay para garantir carregamento
-        elemento = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td[4]/span/b')
-        texto = elemento.text.strip()
-        if "EngNav" in texto:
-            return texto, url
+        # Procurar "EngNav" em todo o conteúdo da página
+        if "EngNav" in driver.page_source:
+            return "CA EngNav encontrado", url
     except Exception as e:
         console.print(f"[yellow]⚠️ {url} — {e}[/yellow]")
     return None
