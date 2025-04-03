@@ -1,53 +1,64 @@
-import requests
-from lxml import html
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.edge.service import Service as EdgeService
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from rich.progress import track
 from rich.console import Console
+import shutil
+import time
 
 console = Console()
 base_url = "https://www.inscricao.marinha.mil.br/ordi/index_concursos.jsp?id_concurso="
 engnav_links = []
 
-def verificar_concurso(i):
-    url = f"{base_url}{i:02d}"
+# Configuração do navegador headless para Microsoft Edge
+options = EdgeOptions()
+options.add_argument("--headless")
+options.add_argument("--disable-gpu")
+options.add_argument("--no-sandbox")
+options.add_argument("--window-size=1920,1080")
+
+driver = webdriver.Edge(service=EdgeService(EdgeChromiumDriverManager().install()), options=options)
+
+def verificar_concurso(id_concurso):
+    url = f"{base_url}{id_concurso:02d}"
     try:
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            tree = html.fromstring(response.content)
-            titulo = tree.xpath('/html/body/table[1]/tbody/tr[2]/td[4]/span/b/text()')
-            if titulo:
-                titulo = titulo[0].strip()
-                if 'EngNav' in titulo:
-                    return titulo, url
+        driver.get(url)
+        time.sleep(1)  # pequeno delay para garantir carregamento
+        elemento = driver.find_element(By.XPATH, '/html/body/table[1]/tbody/tr[2]/td[4]/span/b')
+        texto = elemento.text.strip()
+        if "EngNav" in texto:
+            return texto, url
     except Exception as e:
-        console.print(f"[yellow]⚠️ Erro ao acessar {url}: {e}[/yellow]")
+        console.print(f"[yellow]⚠️ {url} — {e}[/yellow]")
     return None
 
-# Teste com o id_concurso 98
-console.print("[bold magenta]🔎 Testando o concurso 98 antes de varrer todos...[/bold magenta]")
-resultado_teste = verificar_concurso(98)
-if resultado_teste:
-    console.print(f"[green]🎯 Encontrado: [bold]{resultado_teste[0]}[/bold][/green]")
+# Teste inicial com o 98
+console.print("[bold magenta]🔎 Testando concurso 98...[/bold magenta]")
+teste = verificar_concurso(98)
+if teste:
+    console.print(f"[green]🎯 Encontrado: {teste[0]}[/green]")
 else:
-    console.print("[red]❌ Nada encontrado no concurso 98. Verifique o XPath ou o carregamento da página.[/red]")
+    console.print("[red]❌ Nada encontrado no concurso 98. Verifique se há proteção adicional ou bloqueios.[/red]")
+    driver.quit()
     exit()
 
-# Varrer do 01 ao 200
-console.print("\n[bold cyan]🔍 Buscando concursos com EngNav de id_concurso=01 até 200...[/bold cyan]\n")
-
-for i in track(range(1, 201), description="📡 Verificando concursos..."):
+# Escaneando todos de 01 a 200
+console.print("\n[bold cyan]🔍 Varredura de concursos de 01 a 200...[/bold cyan]\n")
+for i in track(range(1, 201), description="📡 Escaneando..."):
     resultado = verificar_concurso(i)
     if resultado:
         engnav_links.append(resultado)
 
-# Salvar os resultados em um .txt
+driver.quit()
+
+# Salvando os resultados
 with open("resultados_engnav.txt", "w", encoding="utf-8") as f:
     for titulo, link in engnav_links:
         f.write(f"{titulo}\n{link}\n\n")
 
-# Resultado final
+# Mostrando os achados no terminal
 console.print("\n[bold green]✅ Resultados salvos em 'resultados_engnav.txt'[/bold green]")
-if engnav_links:
-    for titulo, link in engnav_links:
-        console.print(f"[bold white]{titulo}[/bold white]\n[blue]{link}[/blue]\n")
-else:
-    console.print("[yellow]⚠️ Nenhum concurso com 'EngNav' encontrado.[/yellow]")
+for titulo, link in engnav_links:
+    console.print(f"[bold white]{titulo}[/bold white]\n[blue]{link}[/blue]\n")
